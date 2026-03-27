@@ -1,0 +1,491 @@
+openapi: 3.0.3
+info:
+  title: Health Insurance Management API
+  version: 1.0.0
+  description: API for managing insurance policies and claims in a health insurance system
+  contact:
+    name: API Support
+  license:
+    name: MIT
+
+servers:
+  - url: https://api.healthinsurance.example.com/v1
+    description: Production server
+  - url: http://localhost:8080/v1
+    description: Development server
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Policies
+    description: Operations related to insurance policies
+  - name: Claims
+    description: Operations related to insurance claims
+
+paths:
+  /policies:
+    get:
+      tags:
+        - Policies
+      summary: Get all policies
+      operationId: getPolicies
+      description: Retrieve a list of all insurance policies
+      responses:
+        '200':
+          description: Successfully retrieved list of policies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Policy'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /policies/{policyId}:
+    get:
+      tags:
+        - Policies
+      summary: Get policy by ID
+      operationId: getPolicyById
+      description: Retrieve detailed information about a specific policy
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          description: Unique policy identifier
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Successfully retrieved policy details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /claims:
+    get:
+      tags:
+        - Claims
+      summary: Get all claims
+      operationId: getClaims
+      description: Retrieve a list of all insurance claims with optional filters
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filter claims by status
+          schema:
+            type: string
+            enum:
+              - Submitted
+              - Under Review
+              - Approved
+              - Rejected
+        - name: policyId
+          in: query
+          required: false
+          description: Filter claims by policy ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Successfully retrieved list of claims
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Claim'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Claims
+      summary: Submit a new claim
+      operationId: createClaim
+      description: Create and submit a new insurance claim
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClaimRequest'
+      responses:
+        '201':
+          description: Claim successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Claim'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /claims/{claimId}:
+    get:
+      tags:
+        - Claims
+      summary: Get claim by ID
+      operationId: getClaimById
+      description: Retrieve detailed information about a specific claim
+      parameters:
+        - name: claimId
+          in: path
+          required: true
+          description: Unique claim identifier
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Successfully retrieved claim details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Claim'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /claims/{claimId}/status:
+    patch:
+      tags:
+        - Claims
+      summary: Update claim status
+      operationId: updateClaimStatus
+      description: Update the status of an existing claim (Approved, Rejected, or Under Review)
+      parameters:
+        - name: claimId
+          in: path
+          required: true
+          description: Unique claim identifier
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateClaimStatusRequest'
+      responses:
+        '200':
+          description: Claim status successfully updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Claim'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer token for API authentication
+
+  responses:
+    BadRequestError:
+      description: Invalid request parameters or missing required fields
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    UnauthorizedError:
+      description: Authentication failed or token is missing/invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFoundError:
+      description: Requested resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error type or code
+          example: NOT_FOUND
+        message:
+          type: string
+          description: Detailed error message
+          example: Policy with ID 999 not found
+        timestamp:
+          type: string
+          format: date-time
+          description: Error occurrence timestamp
+          example: 2026-03-27T10:30:00Z
+    Policy:
+      type: object
+      required:
+        - policyId
+        - policyNumber
+        - insuredPersonId
+        - policyType
+        - coverageDetails
+        - startDate
+        - endDate
+        - status
+      properties:
+        policyId:
+          type: integer
+          format: int64
+          description: Unique policy identifier
+          example: 101
+        policyNumber:
+          type: string
+          description: Policy reference number
+          example: POL-2026-0001
+        insuredPersonId:
+          type: integer
+          format: int64
+          description: ID of the insured person
+          example: 1
+        policyType:
+          type: string
+          description: Type of insurance policy
+          example: Standard Health Coverage
+        coverageDetails:
+          type: string
+          description: Details about what the policy covers
+          example: Outpatient and inpatient care, diagnostic tests, emergency services
+        startDate:
+          type: string
+          format: date
+          description: Policy start date
+          example: 2026-01-01
+        endDate:
+          type: string
+          format: date
+          description: Policy end date
+          example: 2027-01-01
+        status:
+          type: string
+          enum:
+            - Active
+            - Inactive
+            - Expired
+            - Cancelled
+          description: Current status of the policy
+          example: Active
+        createdAt:
+          type: string
+          format: date-time
+          description: When the policy was created
+          example: 2026-01-01T00:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the policy was last updated
+          example: 2026-03-27T10:30:00Z
+
+    Claim:
+      type: object
+      required:
+        - claimId
+        - claimNumber
+        - policyId
+        - providerId
+        - claimDate
+        - serviceDate
+        - serviceDescription
+        - claimedAmount
+        - status
+      properties:
+        claimId:
+          type: integer
+          format: int64
+          description: Unique claim identifier
+          example: 501
+        claimNumber:
+          type: string
+          description: Claim reference number
+          example: CLM-2026-0001
+        policyId:
+          type: integer
+          format: int64
+          description: Associated policy ID
+          example: 101
+        providerId:
+          type: integer
+          format: int64
+          description: Healthcare provider ID
+          example: 12
+        claimDate:
+          type: string
+          format: date
+          description: Date when claim was submitted
+          example: 2026-03-20
+        serviceDate:
+          type: string
+          format: date
+          description: Date when the service was provided
+          example: 2026-03-18
+        serviceDescription:
+          type: string
+          description: Description of the medical service
+          example: Specialist consultation for cardiology
+        claimedAmount:
+          type: number
+          format: double
+          description: Amount claimed by the provider
+          minimum: 0
+          example: 150.50
+        approvedAmount:
+          type: number
+          format: double
+          description: Amount approved by insurance company
+          nullable: true
+          minimum: 0
+          example: 120.50
+        status:
+          type: string
+          enum:
+            - Submitted
+            - Under Review
+            - Approved
+            - Rejected
+          description: Current status of the claim
+          example: Approved
+        rejectionReason:
+          type: string
+          nullable: true
+          description: Reason for claim rejection (if applicable)
+          example: Service not covered by policy
+        approvalDate:
+          type: string
+          format: date-time
+          nullable: true
+          description: Date when claim was approved
+          example: 2026-03-25T14:30:00Z
+        createdAt:
+          type: string
+          format: date-time
+          description: When claim was created
+          example: 2026-03-20T08:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          description: When claim was last updated
+          example: 2026-03-25T14:30:00Z
+
+    CreateClaimRequest:
+      type: object
+      required:
+        - policyId
+        - providerId
+        - claimDate
+        - serviceDate
+        - serviceDescription
+        - claimedAmount
+      properties:
+        policyId:
+          type: integer
+          format: int64
+          description: Associated policy ID
+          example: 101
+        providerId:
+          type: integer
+          format: int64
+          description: Healthcare provider ID
+          example: 12
+        claimDate:
+          type: string
+          format: date
+          description: Date when claim is submitted
+          example: 2026-03-20
+        serviceDate:
+          type: string
+          format: date
+          description: Date when the service was provided
+          example: 2026-03-18
+        serviceDescription:
+          type: string
+          minLength: 5
+          maxLength: 500
+          description: Description of the medical service
+          example: Specialist consultation for cardiology
+        claimedAmount:
+          type: number
+          format: double
+          minimum: 0.01
+          description: Amount claimed by the provider
+          example: 150.50
+
+    UpdateClaimStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - Under Review
+            - Approved
+            - Rejected
+          description: New status for the claim
+          example: Approved
+        approvedAmount:
+          type: number
+          format: double
+          nullable: true
+          minimum: 0
+          description: Amount to approve (required if status is Approved)
+          example: 120.50
+        rejectionReason:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: Reason for rejection (required if status is Rejected)
+          example: Service not covered by policy
