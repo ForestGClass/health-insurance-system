@@ -56,7 +56,7 @@ Relationships:
 - A policy belongs to an insured person  
 - A claim is linked to a policy and provider  
 
-📂 See: `database/schema.sql`
+📂 See: `sql/schema.sql`
 
 ---
 
